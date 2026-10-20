@@ -1,0 +1,63 @@
+version: '3.8'
+
+# Production-стек Recartly: фронтенд собирается в статику и раздаётся nginx.
+# Именно в этом режиме работает PWA (установка на домашний экран, офлайн-оболочка).
+#
+#   docker compose -f docker-compose.prod.yml up --build
+#   приложение: http://localhost:3000
+
+services:
+  db:
+    image: postgres:15
+    container_name: recartly_db_prod
+    environment:
+      POSTGRES_USER: recartly
+      POSTGRES_PASSWORD: recartly123
+      POSTGRES_DB: recartly
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - recartly_network
+
+  redis:
+    image: redis:7
+    container_name: recartly_redis_prod
+    networks:
+      - recartly_network
+
+  backend:
+    build: ./backend
+    container_name: recartly_backend_prod
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://recartly:recartly123@db:5432/recartly
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=your-super-secret-key-change-me
+    depends_on:
+      - db
+      - redis
+    networks:
+      - recartly_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: recartly_frontend_prod
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - recartly_network
+
+volumes:
+  postgres_data_prod:
+
+networks:
+  recartly_network:
+    driver: bridge

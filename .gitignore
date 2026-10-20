@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Окружение (секреты не коммитим)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Node / фронтенд
+node_modules/
+frontend/build/
+frontend/.npm-cache/
+npm-debug.log*
+
+# Временные файлы разработки, диагностики и отладки
+.tmp/
+.tmp_*
+ci_debug.png
+
+# Артефакты тестов и отчёты
+allure-results/
+allure-report/
+screenshots/
+
+# Загрузки пользователей (локальные данные)
+backend/uploads/
+
+# Личные файлы, не относящиеся к приложению
+GAME_IDEA.md
+GAME_PLAN.md
+leetcode.py
+
+# IDE и ОС
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log

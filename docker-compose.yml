@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: recartly_db
+    environment:
+      POSTGRES_USER: recartly
+      POSTGRES_PASSWORD: recartly123
+      POSTGRES_DB: recartly
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - recartly_network
+
+  redis:
+    image: redis:7
+    container_name: recartly_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - recartly_network
+
+  backend:
+    build: ./backend
+    container_name: recartly_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://recartly:recartly123@db:5432/recartly
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=your-super-secret-key-change-me
+    depends_on:
+      - db
+      - redis
+    networks:
+      - recartly_network
+
+  frontend:
+    build: ./frontend
+    container_name: recartly_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - recartly_network
+
+volumes:
+  postgres_data:
+
+networks:
+  recartly_network:
+    driver: bridge

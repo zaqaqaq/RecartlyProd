@@ -1,0 +1,557 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&family=Manrope:wght@500..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Recartly — дизайн-система «Смета»
+   Чек, а не скидочная плитка. Крем + графит + изумруд.
+   Новые компоненты: budget-rail, receipt-card, shelf, ri-badge, metric.
+   ============================================================ */
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply bg-ink-50 text-ink-900 dark:bg-ink-950 dark:text-ink-100 font-sans;
+        margin: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overscroll-behavior-y: none;
+    }
+
+    h1, h2, h3, h4 {
+        @apply font-display;
+    }
+
+    /* Transition только на интерактивных элементах —
+       раньше transition-colors висел на `*` и тормозил на слабых телефонах. */
+    a,
+    button,
+    [role='button'],
+    input,
+    select,
+    textarea,
+    label {
+        @apply transition-colors duration-200;
+    }
+
+    /* На мобильных iOS инпуты с font-size < 16px вызывают авто-зум */
+    @media (max-width: 767px) {
+        input,
+        select,
+        textarea {
+            font-size: 16px;
+        }
+    }
+
+    button,
+    a,
+    [role='button'] {
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        @apply bg-ink-300 dark:bg-ink-700 rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        @apply bg-ink-400 dark:bg-ink-600;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+@layer components {
+    /* ---------- Кнопки (тач-таргет ≥ 44px) ---------- */
+    /* В тёмной теме основной акцент чуть глубже: белый текст на primary-500
+       даёт ~3:1, на primary-600 — ~4.3:1. `dark:`-варианты нужны и потому,
+       что hover/active иначе остаются светлыми. */
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-2xl
+        bg-primary-500 hover:bg-primary-600 active:bg-primary-700 active:scale-[0.98]
+        text-white font-semibold shadow-brand hover:shadow-brand-lg
+        dark:bg-primary-600 dark:hover:bg-primary-500 dark:active:bg-primary-500 dark:text-white
+        transition-all duration-200 ease-smeta disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none;
+    }
+
+    .btn-secondary {
+        @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-2xl
+        bg-ink-100 hover:bg-ink-200 dark:bg-ink-800 dark:hover:bg-ink-700
+        text-ink-700 dark:text-ink-100 font-semibold
+        transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+
+    .btn-outline {
+        @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-2xl
+        border-2 border-primary-500 text-primary-600 dark:text-primary-400
+        hover:bg-primary-50 dark:hover:bg-primary-900/20 font-semibold
+        transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+
+    .btn-danger {
+        @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-2xl
+        bg-hot-600 hover:bg-hot-700 text-white font-semibold shadow-sm
+        transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2 min-h-[40px] px-3 py-2 rounded-xl
+        text-ink-600 dark:text-ink-300 hover:bg-ink-100 dark:hover:bg-ink-800
+        font-medium transition-all duration-200 active:scale-[0.98];
+    }
+
+    .btn-block {
+        @apply w-full;
+    }
+
+    /* ---------- Карточки ---------- */
+    .card {
+        @apply bg-white dark:bg-ink-900 rounded-2xl shadow-card
+        border border-ink-200/70 dark:border-ink-800
+        transition-all duration-300 ease-smeta;
+    }
+
+    .card-hover {
+        @apply hover:shadow-card-hover hover:border-ink-300/70
+        dark:hover:shadow-card-hover-dark dark:hover:border-ink-700
+        hover:-translate-y-0.5;
+    }
+
+    .card-feed {
+        @apply card overflow-hidden p-0;
+    }
+
+    /* Чек-карточка: тело + «отрывная» линия с вырезами по бокам */
+    .receipt-card {
+        @apply card overflow-hidden p-0 relative;
+    }
+
+    .receipt-body {
+        @apply p-3 sm:p-4;
+    }
+
+    .receipt-tear {
+        @apply relative border-t border-dashed border-ink-300 dark:border-ink-700
+        px-3 sm:px-4 pt-2.5 pb-3;
+    }
+
+    .receipt-notch {
+        @apply absolute -top-2 w-4 h-4 rounded-full bg-ink-50 dark:bg-ink-950;
+    }
+
+    .receipt-row {
+        @apply flex items-baseline gap-2 text-sm py-0.5;
+    }
+
+    /* Точки-выноски между названием и ценой, как в чеке */
+    .receipt-row-lead {
+        @apply flex-1 border-b border-dotted border-ink-300 dark:border-ink-700;
+    }
+
+    /* ---------- Полки бюджета ---------- */
+    .shelf-head {
+        @apply flex items-center justify-between gap-2 mb-2 mt-1;
+    }
+
+    .shelf-title {
+        @apply font-display text-sm font-extrabold uppercase tracking-wide text-ink-600 dark:text-ink-300;
+    }
+
+    .shelf-range {
+        @apply text-xs font-bold text-primary-600 dark:text-primary-400 tabular-nums whitespace-nowrap;
+    }
+
+    /* ---------- Бюджет-рейка ---------- */
+    .budget-rail {
+        @apply relative h-2.5 w-full rounded-full bg-ink-200 dark:bg-ink-800 overflow-hidden;
+    }
+
+    .budget-rail-fill {
+        @apply absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-smeta;
+    }
+
+    .budget-rail-fill-ok {
+        @apply bg-budget-ok;
+    }
+
+    .budget-rail-fill-warn {
+        @apply bg-budget-warn;
+    }
+
+    .budget-rail-fill-over {
+        @apply bg-budget-over;
+    }
+
+    /* ---------- Метрики (₽/порция, КБЖУ, время) ---------- */
+    .metric {
+        @apply flex flex-col min-w-0;
+    }
+
+    .metric-value {
+        @apply font-display text-lg sm:text-xl font-extrabold tabular-nums leading-none
+        text-ink-900 dark:text-white;
+    }
+
+    .metric-label {
+        @apply text-[10px] sm:text-[11px] uppercase tracking-wide font-semibold
+        text-ink-400 dark:text-ink-500 mt-1 whitespace-nowrap;
+    }
+
+    /* ---------- Индекс Recartly ---------- */
+    .ri-badge {
+        @apply inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-extrabold tabular-nums;
+    }
+
+    .ri-high {
+        @apply bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300;
+    }
+
+    .ri-mid {
+        @apply bg-secondary-50 text-secondary-600 dark:bg-secondary-500/15 dark:text-secondary-300;
+    }
+
+    .ri-low {
+        @apply bg-ink-100 text-ink-500 dark:bg-ink-800 dark:text-ink-400;
+    }
+
+    .ri-bar {
+        @apply h-1.5 w-full rounded-full bg-ink-200 dark:bg-ink-800 overflow-hidden;
+    }
+
+    .ri-bar-fill {
+        @apply h-full rounded-full bg-primary-500 transition-all duration-700 ease-smeta;
+    }
+
+    /* ---------- Сплит-корзина ---------- */
+    .split-option {
+        @apply rounded-2xl border border-ink-200 dark:border-ink-800 p-3 transition-colors;
+    }
+
+    .split-option-best {
+        @apply border-primary-400 bg-primary-50/70 dark:bg-primary-500/10;
+    }
+
+    /* ---------- Строка списка покупок (семейная корзина) ---------- */
+    .check-row {
+        @apply flex items-center gap-3 min-h-[44px] px-2.5 py-2 rounded-xl
+        hover:bg-ink-100 dark:hover:bg-ink-800 transition-colors;
+    }
+
+    /* ---------- Инпуты ---------- */
+    .input {
+        @apply w-full min-h-[44px] px-4 py-2.5 bg-white dark:bg-ink-850
+        border border-ink-200 dark:border-ink-700 rounded-2xl
+        placeholder:text-ink-400 dark:placeholder:text-ink-500
+        focus:outline-none focus:ring-2 focus:ring-primary-500/60 focus:border-primary-400
+        transition-all duration-200 text-ink-900 dark:text-ink-100;
+    }
+
+    .input-error {
+        @apply border-hot-500 focus:ring-hot-500/60 focus:border-hot-500;
+    }
+
+    .label {
+        @apply block text-sm font-semibold text-ink-700 dark:text-ink-300 mb-1.5;
+    }
+
+    /* ---------- Текст ---------- */
+    .heading-1 {
+        @apply font-display text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight
+        text-ink-900 dark:text-white;
+    }
+
+    .heading-2 {
+        @apply font-display text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight
+        text-ink-900 dark:text-white;
+    }
+
+    .heading-3 {
+        @apply font-display text-lg sm:text-xl md:text-2xl font-bold
+        text-ink-900 dark:text-white;
+    }
+
+    .section-title {
+        @apply font-display flex items-center gap-2 text-base sm:text-lg font-extrabold
+        text-ink-900 dark:text-white;
+    }
+
+    /* ---------- Бейджи, теги, чипы ---------- */
+    .tag {
+        @apply inline-flex items-center gap-1 px-2.5 py-1 bg-ink-100 dark:bg-ink-800
+        text-ink-600 dark:text-ink-300 text-xs font-medium rounded-full whitespace-nowrap;
+    }
+
+    .chip {
+        @apply inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-full
+        text-sm font-semibold whitespace-nowrap transition-all duration-200 active:scale-95
+        bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-300
+        hover:bg-ink-200 dark:hover:bg-ink-700;
+    }
+
+    /* Активный чип. dark:-варианты здесь обязательны: у `.chip` есть
+       `dark:bg-ink-800 dark:text-ink-300`, а `.dark .chip` (0,2,0) специфичнее
+       `.chip-active` (0,1,0) — без явного `dark:` выбранный чип в тёмной теме
+       выглядел как невыбранный, а текст сливался с фоном. */
+    .chip-active {
+        @apply bg-primary-500 text-white hover:bg-primary-600 shadow-brand
+        ring-1 ring-primary-500/40
+        dark:bg-primary-600 dark:text-white dark:hover:bg-primary-500
+        dark:ring-primary-400/50;
+    }
+
+    /* Цена — главный акцент «Сметы» */
+    .price {
+        @apply inline-flex items-baseline gap-0.5 font-display font-extrabold
+        text-primary-600 dark:text-primary-400 tabular-nums leading-none;
+    }
+
+    .price-lg {
+        @apply text-2xl sm:text-3xl;
+    }
+
+    .shop-badge {
+        @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold
+        whitespace-nowrap border;
+    }
+
+    /* ---------- Бюджетные сигналы ---------- */
+    .budget-pill {
+        @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold tabular-nums;
+    }
+
+    .budget-ok {
+        @apply bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300;
+    }
+
+    .budget-warn {
+        @apply bg-secondary-50 text-secondary-600 dark:bg-secondary-500/15 dark:text-secondary-300;
+    }
+
+    .budget-over {
+        @apply bg-hot-50 text-hot-600 dark:bg-hot-500/15 dark:text-hot-400;
+    }
+
+    /* Устаревшие «температурные» бейджи Pepper — оставлены для совместимости,
+       постепенно заменяются на ri-badge. */
+    .temp-badge {
+        @apply inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-bold tabular-nums;
+    }
+
+    .temp-hot {
+        @apply bg-hot-50 text-hot-600 dark:bg-hot-600/15 dark:text-hot-400;
+    }
+
+    .temp-cold {
+        @apply bg-cold-50 text-cold-600 dark:bg-cold-500/15 dark:text-cold-400;
+    }
+
+    .temp-neutral {
+        @apply bg-ink-100 text-ink-500 dark:bg-ink-800 dark:text-ink-400;
+    }
+
+    /* ---------- Табы ---------- */
+    .tab-pill {
+        @apply inline-flex items-center gap-1.5 min-h-[38px] px-3.5 rounded-full text-sm font-semibold
+        whitespace-nowrap transition-all duration-200 active:scale-95
+        text-ink-500 dark:text-ink-400 hover:text-ink-800 dark:hover:text-ink-100;
+    }
+
+    /* Активный таб. Та же причина, что у `.chip-active`: `dark:text-ink-400`
+       из `.tab-pill` перебивал белый текст активного таба. */
+    .tab-pill-active {
+        @apply bg-primary-500 text-white shadow-brand hover:text-white dark:hover:text-white
+        ring-1 ring-primary-500/40
+        dark:bg-primary-600 dark:text-white dark:hover:text-white
+        dark:ring-primary-400/50;
+    }
+
+    /* ---------- Аватар ---------- */
+    .avatar {
+        @apply rounded-full flex items-center justify-center font-bold shadow-sm flex-shrink-0
+        overflow-hidden bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300;
+    }
+
+    /* ---------- Skeleton ---------- */
+    .skeleton {
+        @apply bg-ink-200/80 dark:bg-ink-800 rounded-xl animate-pulse;
+    }
+
+    .skeleton-shimmer {
+        background-image: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0) 0,
+            rgba(255, 255, 255, 0.45) 50%,
+            rgba(255, 255, 255, 0) 100%
+        );
+        background-size: 500px 100%;
+        background-repeat: no-repeat;
+        @apply animate-shimmer;
+    }
+
+    /* ---------- Навигация ---------- */
+    .bottom-nav {
+        @apply fixed bottom-0 left-0 right-0 z-50
+        bg-white/95 dark:bg-ink-900/95 backdrop-blur-xl
+        border-t border-ink-200 dark:border-ink-800;
+    }
+
+    .bottom-nav-item {
+        @apply flex flex-1 flex-col items-center justify-center gap-0.5 py-2
+        text-[10px] font-semibold text-ink-400 dark:text-ink-500
+        transition-colors duration-200;
+    }
+
+    .bottom-nav-item-active {
+        @apply text-primary-600 dark:text-primary-400;
+    }
+}
+
+@layer utilities {
+    /* ---------- Обрезка текста ---------- */
+    .line-clamp-1 {
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .line-clamp-3 {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .line-clamp-4 {
+        display: -webkit-box;
+        -webkit-line-clamp: 4;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* ---------- Мобильные утилиты ---------- */
+    .safe-top {
+        padding-top: env(safe-area-inset-top);
+    }
+
+    .safe-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .safe-x {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+
+    .pb-bottom-nav {
+        padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    }
+
+    .hscroll {
+        display: flex;
+        /* Карточки в горизонтальной ленте растягиваются до одной высоты,
+           иначе ряд «пляшет» из-за разной длины заголовков */
+        align-items: stretch;
+        flex-wrap: nowrap;
+        gap: 0.5rem;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+        /* Горизонтальный свайп должен обрабатывать сам контейнер, а не страница */
+        touch-action: pan-x;
+        /* Прокрутка ленты не должна «уводить» страницу по горизонтали */
+        overscroll-behavior-x: contain;
+        scroll-padding-inline: 0.75rem;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+    }
+
+    .hscroll > * {
+        scroll-snap-align: start;
+        flex: 0 0 auto;
+    }
+
+    .hscroll::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Пока ленту тащат мышью — курсор «схватил», снап не мешает движению */
+    .hscroll-dragging {
+        cursor: grabbing;
+        scroll-snap-type: none;
+        user-select: none;
+    }
+
+    /* На устройствах с мышью лента остаётся тянущейся курсором,
+       но полосу прокрутки не показываем — она мешала под списками */
+    @media (pointer: fine) {
+        .hscroll {
+            cursor: grab;
+        }
+    }
+
+    .no-scrollbar {
+        scrollbar-width: none;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .press {
+        @apply active:scale-[0.97] transition-transform duration-150;
+    }
+
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
+
+    .delay-100 {
+        animation-delay: 100ms;
+    }
+    .delay-200 {
+        animation-delay: 200ms;
+    }
+    .delay-300 {
+        animation-delay: 300ms;
+    }
+    .delay-400 {
+        animation-delay: 400ms;
+    }
+    .delay-500 {
+        animation-delay: 500ms;
+    }
+}
