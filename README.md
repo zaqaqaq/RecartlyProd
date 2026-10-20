@@ -17,13 +17,25 @@ Docker-окружения для разработки и production-сборки
 | Фронтенд | React 18, React Router 6, Create React App 5, Tailwind CSS 3, `fetch` (без axios в коде) |
 | Инфраструктура | Docker Compose (dev и prod), nginx (prod-статика), Redis 7 в compose (в коде не используется) |
 | PWA | `manifest.json`, `sw.js` (офлайн-оболочка), `offline.html`, установка на домашний экран |
-| Тесты | pytest + Playwright + Allure (`backend/tests`), CI в `.github/workflows/ci.yml` |
+
+## Два репозитория: приложение и архив с автотестами
+
+Проект разделён на два репозитория:
+
+| Репозиторий | Что внутри |
+|---|---|
+| **этот** — рабочее приложение | Код приложения (`backend/app`, `frontend/src`), скрипты, Docker, документация в `docs/` |
+| **архивная версия** — `zaqaqaq/recartly` | Первая версия, на которой отрабатывались автотесты: `backend/tests` (pytest), `backend/pages` (Playwright page objects), `config/`, `utils/`, `test_data/`, Allure-отчёты, CI в `.github/workflows/ci.yml` |
+
+Тестовая обвязка сознательно **не переносится** в этот репозиторий: она относится к учебной версии.
+В рабочей версии `backend/tests`, `backend/pages`, `config/`, `utils/`, `test_data/`, `.github/` исключены через `.gitignore`.
+Планируемое развитие — собственный набор тестов уже под актуальную архитектуру.
 
 ## Быстрый старт
 
 ### 1. Требования
 
-- Python **3.11+** (в CI используется 3.11);
+- Python **3.11+**;
 - Node.js **18+** и npm (CRA 5 и `node:18-alpine` в Dockerfile);
 - Docker Desktop с Docker Compose;
 - свободные порты `3000` (фронт), `8000` (API), `5432` (PostgreSQL), `6379` (Redis).
@@ -147,7 +159,6 @@ recartly/
 │   ├── scripts/                 19 скриптов: миграция, сиды, диагностика, очистка, smoke-тесты
 │   ├── data/                    russian_cities.json и исходный CSV для build_cities.py
 │   ├── alembic/                 Alembic (фактически одна ревизия 001_add_photo_url)
-│   ├── tests/                   pytest + Playwright page objects (backend/pages)
 │   ├── uploads/                 файлы, которые раздаёт /uploads (аватары и т. п.)
 │   ├── Dockerfile               python:3.11-slim + uvicorn --reload
 │   └── requirements.txt
