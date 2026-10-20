@@ -39,6 +39,14 @@ GAME_IDEA.md
 GAME_PLAN.md
 leetcode.py
 
+# Архив тестовой обвязки первой версии (автотесты живут в отдельном репозитории).
+# Файлы остаются на диске для справки, но в рабочее приложение не попадают.
+backend/tests/
+config/
+utils/
+test_data/
+.github/
+
 # IDE и ОС
 .idea/
 .vscode/
