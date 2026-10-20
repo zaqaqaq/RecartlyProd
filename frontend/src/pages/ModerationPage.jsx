@@ -138,6 +138,56 @@ const taskTitle = (task, detail) => {
     );
 };
 
+/* Объединяем страницы двух типов для фильтра «Все»: порядок как на сервере. */
+const mergeTasks = (groups) => {
+    const byId = new Map();
+    groups.forEach((group) => {
+        (group || []).forEach((task) => {
+            if (task && task.id !== undefined && task.id !== null) {
+                byId.set(task.id, task);
+            }
+        });
+    });
+
+    return Array.from(byId.values()).sort((a, b) => {
+        const priorityDiff = (Number(b.priority) || 0) - (Number(a.priority) || 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeB - timeA;
+    });
+};
+
+/**
+ * Одна страница очереди. Для «Все» берём рецепты и наборы параллельно:
+ * в /admin/queue попадают ещё цены и акции, а это рабочее место — только
+ * про публикации (рецепты и наборы).
+ */
+const fetchQueueSlice = async (filterValue, skip) => {
+    if (filterValue === 'all') {
+        const recipeSkip = Math.max(0, Number(skip && skip.recipe) || 0);
+        const basketSkip = Math.max(0, Number(skip && skip.basket) || 0);
+
+        const [recipePage, basketPage] = await Promise.all([
+            getModerationQueue('pending', 'recipe', PAGE_SIZE, recipeSkip),
+            getModerationQueue('pending', 'basket', PAGE_SIZE, basketSkip),
+        ]);
+
+        const recipeItems = Array.isArray(recipePage && recipePage.items) ? recipePage.items : [];
+        const basketItems = Array.isArray(basketPage && basketPage.items) ? basketPage.items : [];
+
+        return {
+            items: mergeTasks([recipeItems, basketItems]),
+            total: (Number(recipePage && recipePage.total) || 0)
+                + (Number(basketPage && basketPage.total) || 0),
+        };
+    }
+
+    const data = await getModerationQueue('pending', filterValue, PAGE_SIZE, Math.max(0, Number(skip) || 0));
+    const items = Array.isArray(data && data.items) ? data.items : [];
+    return { items, total: Number(data && data.total) || items.length };
+};
+
 const humanizeError = (err, fallback) => {
     const raw = (err && err.message) || '';
     if (/HTTP 401/.test(raw)) return 'Сессия истекла. Войдите снова.';
@@ -904,7 +954,7 @@ function DecisionPanel({
                 </p>
             )}
 
-            <div className="flex flex-col xs:flex-row gap-2 mt-3">
+            <div className="flex flex-col sm:flex-row gap-2 mt-3">
                 <button
                     type="button"
                     onClick={onConfirm}
@@ -1055,7 +1105,7 @@ function ReviewCard({
                 ) : (
                     <>
                         <p className="label mb-2">Решение по публикации</p>
-                        <div className="grid grid-cols-1 xs:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <button
                                 type="button"
                                 onClick={() => onDecision('approve')}
@@ -1185,15 +1235,16 @@ function ModerationPage() {
 
     const loadCounts = useCallback(async () => {
         try {
-            const [all, recipes, baskets] = await Promise.all([
-                getModerationQueue('pending', null, 1, 0),
+            const [recipes, baskets] = await Promise.all([
                 getModerationQueue('pending', 'recipe', 1, 0),
                 getModerationQueue('pending', 'basket', 1, 0),
             ]);
+            const recipeTotal = Number(recipes && recipes.total) || 0;
+            const basketTotal = Number(baskets && baskets.total) || 0;
             setCounts({
-                all: Number(all && all.total) || 0,
-                recipe: Number(recipes && recipes.total) || 0,
-                basket: Number(baskets && baskets.total) || 0,
+                all: recipeTotal + basketTotal,
+                recipe: recipeTotal,
+                basket: basketTotal,
             });
         } catch (err) {
             // Счётчики по типам вторичны — очередь уже показывает главное.
@@ -1210,16 +1261,15 @@ function ModerationPage() {
         setLoading(true);
         setQueueError('');
         try {
-            const targetType = nextFilter === 'all' ? null : nextFilter;
-            const data = await getModerationQueue('pending', targetType, PAGE_SIZE, 0);
+            const slice = await fetchQueueSlice(
+                nextFilter,
+                nextFilter === 'all' ? { recipe: 0, basket: 0 } : 0
+            );
             if (queueRequestRef.current !== requestId) return;
 
-            const items = Array.isArray(data && data.items) ? data.items : [];
-            const total = Number(data && data.total);
-
-            setQueue(items);
-            setQueueTotal(Number.isFinite(total) ? total : items.length);
-            setSelectedId((prev) => (items.some((item) => item.id === prev) ? prev : null));
+            setQueue(slice.items);
+            setQueueTotal(slice.total);
+            setSelectedId((prev) => (slice.items.some((item) => item.id === prev) ? prev : null));
         } catch (err) {
             if (queueRequestRef.current !== requestId) return;
             setQueueError(humanizeError(err, 'Не удалось загрузить очередь проверки.'));
@@ -1447,21 +1497,21 @@ function ModerationPage() {
         if (loadingMore || loading) return;
 
         const currentFilter = filter;
+        const skip = currentFilter === 'all'
+            ? {
+                recipe: queue.filter((task) => task.target_type === 'recipe').length,
+                basket: queue.filter((task) => isBasketType(task.target_type)).length,
+            }
+            : queue.length;
+
         setLoadingMore(true);
         setQueueError('');
         try {
-            const targetType = currentFilter === 'all' ? null : currentFilter;
-            const data = await getModerationQueue('pending', targetType, PAGE_SIZE, queue.length);
+            const slice = await fetchQueueSlice(currentFilter, skip);
             if (filterRef.current !== currentFilter) return;
 
-            const items = Array.isArray(data && data.items) ? data.items : [];
-            const total = Number(data && data.total);
-
-            setQueue((prev) => {
-                const seen = new Set(prev.map((item) => item.id));
-                return [...prev, ...items.filter((item) => !seen.has(item.id))];
-            });
-            if (Number.isFinite(total)) setQueueTotal(total);
+            setQueue((prev) => mergeTasks([prev, slice.items]));
+            setQueueTotal(slice.total);
         } catch (err) {
             if (filterRef.current !== currentFilter) return;
             setQueueError(humanizeError(err, 'Не удалось загрузить следующую часть очереди.'));
@@ -1497,10 +1547,7 @@ function ModerationPage() {
 
     /* ---------- Рабочее место ---------- */
 
-    const rawPending = stats
-        ? Number(stats.queue_pending ?? stats.queue ?? stats.pending ?? 0)
-        : counts.all || queueTotal;
-    const pending = Number.isFinite(rawPending) ? rawPending : counts.all;
+    const pending = counts.all || queueTotal;
 
     const filterCount = (key) => {
         if (key === 'all') return pending;
@@ -1558,7 +1605,7 @@ function ModerationPage() {
 
             <section className="card p-3 sm:p-4 mb-3" aria-label="Счётчики модерации">
                 {loading && !stats && counts.all === 0 ? (
-                    <div className="grid grid-cols-2 xs:grid-cols-4 gap-3" aria-hidden="true">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" aria-hidden="true">
                         {[0, 1, 2, 3].map((item) => (
                             <div key={item} className="space-y-2">
                                 <div className="skeleton h-6 w-12" />
@@ -1567,7 +1614,7 @@ function ModerationPage() {
                         ))}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 xs:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <Counter label="На проверке" value={pending} />
                         <Counter
                             label="Рецепты"
