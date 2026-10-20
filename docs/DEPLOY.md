@@ -126,14 +126,18 @@ docker compose exec backend python scripts/grant_admin.py user@example.com admin
 # 1. Только база (и Redis, если нужен)
 docker compose up -d db redis
 
-# 2. Миграция с хоста (Postgres проброшен на localhost:5432)
+# 2. Python-окружение (один раз)
+python -m venv .venv
+.venv\Scripts\pip install -r backend\requirements.txt
+
+# 3. Миграция с хоста (Postgres проброшен на localhost:5432)
 .venv\Scripts\python.exe backend\scripts\migrate_smeta.py
 
-# 3. Бэкенд
+# 4. Бэкенд
 cd backend
 ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 4. Фронтенд (в отдельном терминале)
+# 5. Фронтенд (в отдельном терминале)
 cd frontend
 npm install
 npm start
@@ -304,8 +308,10 @@ docker compose ps
 docker compose exec db psql -U recartly -d recartly -c "select count(*) from baskets;"
 ```
 
-Резервная копия БД (вручную, вне приложения):
+Резервная копия БД (вручную, вне приложения; `-f` внутри контейнера, чтобы PowerShell не менял
+кодировку файла):
 
 ```powershell
-docker compose exec db pg_dump -U recartly recartly > backup.sql
+docker compose exec db pg_dump -U recartly -f /tmp/backup.sql recartly
+docker compose cp db:/tmp/backup.sql backup.sql
 ```

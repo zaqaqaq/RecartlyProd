@@ -44,6 +44,13 @@ docker start recartly_db recartly_redis recartly_backend
 Проверка: `http://localhost:8000/health` → `{"status":"ok"}`, документация API —
 `http://localhost:8000/docs`.
 
+Для запуска скриптов и бэкенда с хоста нужно Python-окружение:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\pip install -r backend\requirements.txt
+```
+
 ### 3. Миграции и справочники
 
 `backend/scripts/migrate_smeta.py` идемпотентно создаёт таблицы, добавляет колонки, индексы и
@@ -166,7 +173,7 @@ recartly/
 ├── docker-compose.prod.yml      prod: db, redis, backend, frontend (nginx-статика)
 ├── CONCEPT.md                   утверждённая концепция продукта
 ├── FEATURES_REVIEW.md           ревизия функционала: что оставить/переделать/вырезать
-└── .env                         DATABASE_URL, REDIS_URL, SECRET_KEY для локального запуска
+└── .env                         пример DATABASE_URL/REDIS_URL/SECRET_KEY (compose задаёт значения сам)
 ```
 
 Каталоги `config/`, `utils/`, `test_data/`, `screenshots/`, `allure-*` относятся к тестовой
@@ -191,7 +198,7 @@ recartly/
 | Переменная | Где | Назначение |
 |---|---|---|
 | `DATABASE_URL` | `.env`, docker-compose, окружение | строка подключения SQLAlchemy; по умолчанию `postgresql://recartly:recartly123@db:5432/recartly` |
-| `SECRET_KEY` | `.env`, docker-compose | подпись JWT; в `security.py` есть fallback-значение |
+| `SECRET_KEY` | `.env`, docker-compose | подпись JWT; в compose задано `your-super-secret-key-change-me`, в `security.py` есть fallback-значение |
 | `REDIS_URL` | `.env`, docker-compose | зарезервировано: Redis поднят, но код его не использует |
 | `REACT_APP_API_URL` | `frontend/.env` | адрес API, вшивается в сборку CRA |
 
@@ -206,7 +213,8 @@ recartly/
   Витрина при этом работает на готовых наборах (`/baskets/feed`, `/baskets/dishes`).
 - **Города скрыты из основных сценариев**, но модели, API `/geo/*` и `CityCombobox` живы
   (город используется в форме акции).
-- **Модерация включается по доверию.** Публикация уходит в очередь, если `trust_score < 60`
-  или автофлаги нашли ссылки/телефоны/спам; иначе публикуется сразу.
+- **Модерация включается по доверию.** Рецепт или акция уходят в очередь, если `trust_score < 60`
+  или автофлаги нашли ссылки/телефоны/спам; доверенный автор публикуется сразу. Наборы очередь
+  модерации не проходят — они создаются `published`.
 - **Alembic не является основным механизмом миграций**: схема живёт в моделях и
   `migrate_smeta.py`, в Alembic есть только ревизия `001_add_photo_url`.

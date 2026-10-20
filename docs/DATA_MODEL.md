@@ -31,7 +31,7 @@
 
 ## ER-диаграмма
 
-Упрощённая схема ключевых сущностей (15 таблиц; остальные перечислены ниже).
+Упрощённая схема ключевых сущностей (17 таблиц; остальные перечислены ниже).
 
 ```mermaid
 erDiagram
@@ -63,6 +63,13 @@ erDiagram
         bool is_partner
         bool is_custom
     }
+    shop_cities {
+        int id PK
+        int shop_id FK
+        int city_id FK
+        string address
+        bool is_active
+    }
     products {
         int id PK
         string name
@@ -73,6 +80,14 @@ erDiagram
         float pack_units
         float kcal_per_100
         string aliases
+    }
+    product_nutrition {
+        int id PK
+        int product_id FK
+        int user_id FK
+        float kcal
+        float protein
+        string source
     }
     price_quotes {
         int id PK

@@ -288,7 +288,7 @@ app/
 | `seed_recipes_plain.py` | добавляет два рецепта без набора («Сырники классические», «Овсяная каша на молоке») от первого пользователя БД | пропускает существующие по названию |
 | `seed_demo.py` | демо-рецепты с ингредиентами, КБЖУ и сметой | идемпотентен по названию |
 | `build_cities.py` | читает `backend/data/russian_cities_raw.csv`, формирует `russian_cities.json` (название, регион, округ, население, slug) | перезаписывает JSON |
-| `grant_admin.py` | назначает роль пользователю: `grant_admin.py <email> [роль]`, по умолчанию `smeta.tester@recartly.ru` / `admin`; печатает результат и проверяет доступ к админке | безопасен |
+| `grant_admin.py` | назначает роль пользователю: `grant_admin.py <email> [роль]`, по умолчанию `smeta.tester@recartly.ru` / `admin`; печатает id и новую роль | безопасен |
 | `check_db.py` | список таблиц, версия Alembic, количество строк в ключевых таблицах (в списке ещё старые `shopping_carts`/`cart_items` — они помечаются как отсутствующие) | только чтение |
 | `check_schema.py` | проверяет наличие таблиц `basket_comment_reactions`, `user_shops`, `baskets`, `shops` и колонок `receipt_photo_url`, `photo_url`, `is_custom`, `created_by` | только чтение |
 | `check_uploads.py` | берёт до трёх фото ингредиентов и проверяет, что `/uploads/...` отдаётся по HTTP с `localhost:8000` | только чтение |
