@@ -82,8 +82,10 @@ export const searchRecipes = (q = '', minPrice = null, maxPrice = null, skip = 0
     return request(url, 'GET');
 };
 
+// Токен передаём, если он есть: автор должен открыть свой рецепт, пока тот
+// на модерации (гостю ответ всё равно придёт без неопубликованного контента).
 export const getRecipe = (id) =>
-    request(`/recipes/${id}`, 'GET');
+    request(`/recipes/${id}`, 'GET', null, true);
 
 export const createRecipe = (recipeData) =>
     request('/recipes/', 'POST', recipeData, true);
