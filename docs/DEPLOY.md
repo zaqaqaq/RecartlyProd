@@ -275,17 +275,12 @@ docker compose -f docker-compose.prod.yml exec backend python scripts/migrate_sm
 
 ## CI
 
-`.github/workflows/ci.yml` на push/PR в `main`/`master`:
+В этом репозитории CI пока не настроен. Тестовая обвязка (pytest, Playwright, Allure, `.github/workflows/ci.yml`)
+осталась в **архивном репозитории** `zaqaqaq/recartly` — это версия, на которой отрабатывались автотесты.
 
-1. ставит Python 3.11 и зависимости `backend/requirements.txt` + Playwright Chromium;
-2. поднимает `docker compose` (`db`, `redis`, затем `backend`, `frontend`);
-3. пытается создать legacy-таблицы через `psql` (шаг с `continue-on-error: true`);
-4. запускает `pytest tests/ --alluredir=allure-results -v`;
-5. генерирует и публикует Allure-отчёт артефактами.
-
-Шаг с ручным `CREATE TABLE` описывает старую схему (`password_hash`, `ingredients TEXT`) и оставлен
-как исторический; актуальная схема создаётся `migrate_smeta.py`. При падении тестов в CI сначала
-проверьте, что контейнеры поднялись и БД доступна.
+Планируемый CI для рабочего приложения: линтер бэкенда, проверка сборки фронтенда
+(`npm ci && npm run build`) и smoke-проверка, что `docker compose up -d --build` поднимает сервисы
+и `GET /health` отвечает `{"status":"ok"}`.
 
 ## Диагностика
 
