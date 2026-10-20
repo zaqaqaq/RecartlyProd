@@ -47,6 +47,7 @@ from app.schemas.smeta import (
     BasketRecipeOut,
 )
 from app.services import pricing_service
+from app.services.moderation_service import auto_flags_for, enqueue_if_needed
 
 baskets_router = APIRouter(prefix="/baskets", tags=["Наборы"])
 
@@ -442,6 +443,28 @@ def create_basket(
         # Блюдо и набор связываем: рецепт «повышается» в бюджетный раздел
         recipe.basket_id = basket.id
 
+    # Модерация: все новые наборы проходят ручную проверку, как и рецепты.
+    # Модератор и админ публикуют сразу — они и есть проверяющие.
+    is_privileged = (getattr(current_user, 'role', 'user') or 'user') in ('moderator', 'admin')
+    basket.status = 'published' if is_privileged else 'pending'
+    if not is_privileged:
+        item_names = [
+            item.name for item in
+            db.query(BasketItem).filter(BasketItem.basket_id == basket.id).all()
+        ]
+        flags_text = "\n".join(filter(None, [
+            basket.title,
+            basket.description,
+            " ".join(item_names),
+        ]))
+        enqueue_if_needed(
+            db,
+            target_type='basket',
+            target_id=basket.id,
+            author_id=current_user.id,
+            auto_flags=auto_flags_for(flags_text, basket.photo_url),
+        )
+
     db.commit()
     db.refresh(basket)
     return serialize_basket(db, basket, current_user)
@@ -525,7 +548,7 @@ def preview_basket(
 def shared_basket(token: str, db: Session = Depends(get_db)):
     """Набор по ссылке-токену — доступен без авторизации (семейная закупка)."""
     basket = db.query(Basket).filter(Basket.share_token == token).first()
-    if basket is None:
+    if basket is None or basket.status != 'published':
         raise HTTPException(status_code=404, detail='Набор не найден')
     return serialize_basket(db, basket)
 
@@ -545,6 +568,10 @@ def get_basket(
     is_privileged = bool(
         current_user and (basket.user_id == current_user.id or role in ('moderator', 'admin'))
     )
+    # Набор на модерации (pending) не виден посторонним даже по прямой ссылке:
+    # автор и модераторы должны открыть его, чтобы проверить и одобрить.
+    if basket.status != 'published' and not is_privileged:
+        raise HTTPException(status_code=404, detail='Набор не найден')
     if not basket.is_public and not basket.share_token and not is_privileged:
         raise HTTPException(status_code=403, detail='Набор приватный')
 

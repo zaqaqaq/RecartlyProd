@@ -27,12 +27,9 @@ from app.models.recipe import Recipe
 from app.models.review import Review
 from app.models.user import User
 from app.services.moderation_service import (
-    TRUST_PENALTY_REJECT,
-    TRUST_REWARD_APPROVE,
     apply_decision,
     flags_from_json,
     log_action,
-    shift_trust,
 )
 from app.services.notification_service import notify_moderation_decision
 
@@ -135,6 +132,10 @@ def _serialize_task_base(task: ModerationTask) -> Dict[str, Any]:
 
 
 def _recipe_preview(recipe: Recipe, author: Optional[User]) -> Dict[str, Any]:
+    """Превью рецепта для модератора: не только заголовок, но и состав, и шаги.
+
+    Модерация проверяет данные: ингредиенты, количества, цены, фото шагов.
+    """
     return {
         'title': recipe.title,
         'description': (recipe.description or '')[:280],
@@ -143,6 +144,51 @@ def _recipe_preview(recipe: Recipe, author: Optional[User]) -> Dict[str, Any]:
         'avatar_url': author.avatar_url if author else None,
         'recipe_status': recipe.status,
         'created_at': _to_iso(recipe.created_at),
+        'ingredients': [
+            {
+                'name': item.name,
+                'quantity': item.quantity,
+                'price': item.price,
+                'photo_url': item.photo_url,
+            }
+            for item in (recipe.ingredients or [])
+        ],
+        'steps': [
+            {'text': step.text, 'photo_url': step.photo_url}
+            for step in (recipe.steps or [])
+        ],
+        'cook_time_min': recipe.cook_time_min,
+        'servings': recipe.servings,
+        'difficulty': recipe.difficulty,
+        'category': recipe.category,
+    }
+
+
+def _basket_preview(basket: Basket, author: Optional[User]) -> Dict[str, Any]:
+    """Превью набора для модератора: позиции, цены и итог."""
+    items = basket.items or []
+    return {
+        'title': basket.title,
+        'description': (basket.description or '')[:280],
+        'photo_url': basket.photo_url,
+        'receipt_photo_url': basket.receipt_photo_url,
+        'username': author.username if author else None,
+        'avatar_url': author.avatar_url if author else None,
+        'basket_status': basket.status,
+        'created_at': _to_iso(basket.created_at),
+        'total_price': basket.total_price,
+        'items_count': len(items),
+        'prices_date': _to_iso(basket.prices_date),
+        'items': [
+            {
+                'name': item.name,
+                'quantity': item.quantity,
+                'unit': item.unit,
+                'price': item.price,
+                'photo_url': item.photo_url,
+            }
+            for item in items
+        ],
     }
 
 
@@ -270,6 +316,21 @@ def _build_previews(
                 quote, products.get(quote.product_id), shops.get(quote.shop_id)
             )
 
+    # Наборы (раньше — «корзины сообщества»): состав и цены нужны модератору
+    basket_ids = ids_by_type.get('basket', set()) | ids_by_type.get('cart', set())
+    if basket_ids:
+        baskets = db.query(Basket).filter(Basket.id.in_(basket_ids)).all()
+        author_ids = {b.user_id for b in baskets if b.user_id}
+        authors = {}
+        if author_ids:
+            authors = {
+                u.id: u for u in db.query(User).filter(User.id.in_(author_ids)).all()
+            }
+        for basket in baskets:
+            previews[('basket', basket.id)] = _basket_preview(
+                basket, authors.get(basket.user_id)
+            )
+
     # Акции от пользователей
     promo_ids = ids_by_type.get('promo', set())
     if promo_ids:
@@ -309,30 +370,6 @@ def _build_previews(
                 'created_at': _to_iso(promo.created_at),
                 'ends_at': _to_iso(promo.ends_at),
             }
-
-    # Наборы (раньше — «корзины сообщества»)
-    basket_ids = ids_by_type.get('cart', set()) | ids_by_type.get('basket', set())
-    if basket_ids:
-        baskets = db.query(Basket).filter(Basket.id.in_(basket_ids)).all()
-        basket_authors = {b.user_id for b in baskets}
-        basket_users = {}
-        if basket_authors:
-            basket_users = {
-                u.id: u for u in db.query(User).filter(User.id.in_(basket_authors)).all()
-            }
-        for basket in baskets:
-            author = basket_users.get(basket.user_id)
-            preview = {
-                'title': basket.title,
-                'description': (basket.description or '')[:280],
-                'price': basket.total_price,
-                'servings': basket.servings,
-                'username': author.username if author else None,
-                'created_at': _to_iso(basket.created_at),
-                'prices_date': _to_iso(basket.prices_date),
-            }
-            previews[('basket', basket.id)] = preview
-            previews[('cart', basket.id)] = preview
 
     # Отзывы
     review_ids = ids_by_type.get('review', set())
@@ -505,7 +542,7 @@ def admin_approve_task(
     db.commit()
     db.refresh(task)
 
-    new_trust = shift_trust(db, task.author_id, TRUST_REWARD_APPROVE)
+    # Рейтинг автора больше не меняется: решение модератора — только про контент.
 
     log_action(
         db,
@@ -516,7 +553,6 @@ def admin_approve_task(
         payload={
             'task_id': task.id,
             'author_id': task.author_id,
-            'trust_score': new_trust,
             'auto_flags': flags_from_json(task.auto_flags),
         },
     )
@@ -533,7 +569,6 @@ def admin_approve_task(
         'message': 'Задача одобрена',
         'task_id': task.id,
         'status': task.status,
-        'trust_score': new_trust,
     }
 
 
@@ -577,7 +612,7 @@ def admin_reject_task(
     db.commit()
     db.refresh(task)
 
-    new_trust = shift_trust(db, task.author_id, -TRUST_PENALTY_REJECT)
+    # Рейтинг автора больше не меняется: отклонение — только про контент.
 
     log_action(
         db,
@@ -590,7 +625,6 @@ def admin_reject_task(
             'reason_code': reason_code,
             'comment': payload.comment,
             'author_id': task.author_id,
-            'trust_score': new_trust,
         },
     )
 
@@ -609,7 +643,6 @@ def admin_reject_task(
         'task_id': task.id,
         'status': task.status,
         'reason_code': reason_code,
-        'trust_score': new_trust,
     }
 
 

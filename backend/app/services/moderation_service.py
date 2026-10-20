@@ -17,9 +17,11 @@ from app.models.promo import Promo
 from app.models.recipe import Recipe
 
 # ---------- Пороги ----------
-# Ниже этого доверия контент всегда уходит на ручную проверку.
+# Рейтинг автора больше не влияет на публикацию: ручную проверку проходят все
+# новые рецепты и наборы. Константы оставлены для совместимости со старыми
+# записями и для будущих механик (не используются при постановке в очередь).
 TRUST_THRESHOLD = 60.0
-# Одобрение/отклонение двигают доверие автора.
+# Одобрение/отклонение больше не двигают доверие автора.
 TRUST_REWARD_APPROVE = 2.0
 TRUST_PENALTY_REJECT = 5.0
 TRUST_MIN = 0.0
@@ -143,28 +145,15 @@ def enqueue_if_needed(
         author_id: Optional[int],
         auto_flags: Optional[List[str]] = None,
 ) -> bool:
-    """Ставит контент в очередь модерации, если это нужно.
+    """Ставит публикацию в очередь модерации.
 
-    Задача создаётся, когда автор ещё не набрал доверие (``trust_score < 60``)
-    или когда автоматика нашла флаги. Иначе контент публикуется сразу без
-    задачи, и функция возвращает ``False``.
+    Ручную проверку проходят **все** новые публикации (рецепты и наборы):
+    автопубликации по уровню доверия больше нет. Автофлаги не решают судьбу
+    контента, а лишь подсказывают модератору, на что смотреть в первую очередь.
 
-    :return: ``True``, если задача создана (контент нужно придержать).
+    :return: всегда ``True`` — контент придержан до решения модератора.
     """
-    from app.models.user import User  # локальный импорт — избегаем циклов
-
     flags = list(auto_flags or [])
-
-    author = None
-    if author_id is not None:
-        author = db.query(User).filter(User.id == author_id).first()
-
-    trust = TRUST_THRESHOLD
-    if author is not None and author.trust_score is not None:
-        trust = float(author.trust_score)
-
-    if trust >= TRUST_THRESHOLD and not flags:
-        return False
 
     task = ModerationTask(
         target_type=target_type,
@@ -290,7 +279,27 @@ def apply_decision(
         db.commit()
         return True
 
-    # Для остальных типов (cart, review, comment, avatar, photo) отдельных
+    if target_type in ('basket', 'cart'):
+        from app.models.basket import Basket
+
+        basket = db.query(Basket).filter(Basket.id == target_id).first()
+        if basket is None:
+            return False
+
+        if decision == 'publish':
+            basket.status = 'published'
+            basket.reject_reason = None
+        elif decision == 'reject':
+            basket.status = 'rejected'
+            basket.reject_reason = reason
+        else:
+            basket.status = 'needs_changes'
+            basket.reject_reason = None
+
+        db.commit()
+        return True
+
+    # Для остальных типов (review, comment, avatar, photo) отдельных
     # статусов в моделях пока нет — решение фиксируется только в задаче.
     return False
 

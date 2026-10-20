@@ -6,7 +6,6 @@ import RiBadge from '../components/RiBadge';
 import RatingWidget from '../components/RatingWidget';
 import RecipeCostBlock from '../components/RecipeCostBlock';
 import ReportButton from '../components/ReportButton';
-import { RecipeTrustBadge } from '../components/TrustBadge';
 
 function AvatarDisplay({ avatarUrl, username, size = "w-10 h-10 text-base" }) {
     const getInitials = () => {
@@ -282,7 +281,6 @@ function RecipePage() {
                         <h1 className="heading-2 flex-1 min-w-0 break-words">
                             {recipe.title}
                         </h1>
-                        <RecipeTrustBadge recipe={recipe} size="md" />
                         {(!isAuthenticated || recipe.user_id !== parseInt(localStorage.getItem('user_id'))) && (
                             <ReportButton targetType="recipe" targetId={recipe.id} />
                         )}

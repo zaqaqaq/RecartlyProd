@@ -228,8 +228,14 @@ sequenceDiagram
 
 ### 3. Модерация публикации
 
-Модерация не блокирует создание контента: запись сохраняется сразу, но получает статус
-`pending`, если автор не набрал доверие или сработали автофлаги.
+Все новые публикации — и рецепты, и наборы — проходят ручную проверку. Рейтинг автора
+(уровень доверия) больше не влияет на публикацию и не меняется решениями модератора:
+автопубликации нет. Исключение — сам модератор или админ: его публикация выходит сразу,
+он и есть проверяющий.
+
+Модерация не блокирует создание контента: запись сохраняется сразу со статусом `pending`
+и становится видимой автору, но не попадает в общие ленты, поиск и чужие прямые ссылки,
+пока её не одобрят.
 
 ```mermaid
 sequenceDiagram
@@ -241,15 +247,15 @@ sequenceDiagram
     participant AD as routes/admin.py
     participant NS as notification_service
 
-    A->>R: POST /recipes/
-    R->>MS: auto_flags_for(title + description + instructions)
-    R->>MS: enqueue_if_needed(trust ниже 60 или есть флаги)
+    A->>R: POST /recipes/ (или /baskets/)
+    R->>MS: auto_flags_for(текст публикации)
+    R->>MS: enqueue_if_needed(...) — всегда создаёт задачу
     MS->>DB: INSERT task(status='pending', auto_flags)
-    R-->>A: recipe.status = 'pending'
+    R-->>A: status = 'pending'
     M->>AD: GET /admin/queue?status=pending
+    Note over AD: preview рецепта — ингредиенты и шаги,<br/>набора — позиции и итог
     M->>AD: POST /admin/tasks/{id}/approve
-    AD->>MS: apply_decision('publish') → status='published', is_verified
-    AD->>MS: shift_trust(+2)
+    AD->>MS: apply_decision('publish') → status='published'
     AD->>MS: log_action('approve')
     AD->>NS: notify_moderation_decision(...)
     NS-->>A: уведомление «Рецепт опубликован»

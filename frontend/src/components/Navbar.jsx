@@ -260,7 +260,7 @@ function Navbar() {
                                         <div className="border-t border-ink-100 dark:border-ink-800 my-1" />
                                         <MenuLink to="/profile" emoji="👤" label="Мой профиль" onClick={() => setUserMenuOpen(false)} />
                                         {(role === 'moderator' || role === 'admin') && (
-                                            <MenuLink to="/admin" emoji="🛡️" label="Модерация" onClick={() => setUserMenuOpen(false)} />
+                                            <MenuLink to="/moderation" emoji="🛡️" label="Модерация" onClick={() => setUserMenuOpen(false)} />
                                         )}
                                         <MenuLink to="/settings" emoji="⚙️" label="Настройки" onClick={() => setUserMenuOpen(false)} />
                                         <div className="border-t border-ink-100 dark:border-ink-800 mt-1 pt-1">

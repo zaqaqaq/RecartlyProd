@@ -29,6 +29,7 @@ import DashboardPage from './pages/DashboardPage';
 import PromosPage from './pages/PromosPage';
 import PromoDetailPage from './pages/PromoDetailPage';
 import AdminPage from './pages/AdminPage';
+import ModerationPage from './pages/ModerationPage';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -119,6 +120,8 @@ function App() {
                         <Route path="/promos" element={<PromosPage />} />
                         <Route path="/promos/:id" element={<PromoDetailPage />} />
                         <Route path="/admin" element={<AdminPage />} />
+                        {/* Отдельный вход и рабочее место модератора: все публикации проходят проверку */}
+                        <Route path="/moderation" element={<ModerationPage />} />
                     </Routes>
                 </main>
                 <Footer />

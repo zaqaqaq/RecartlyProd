@@ -92,15 +92,17 @@ def create_recipe(
     if recipe_data.photo_url:
         recipe.photo_url = recipe_data.photo_url
 
-    # Модерация: контент новичков (trust_score < 60) и всё, что зацепили
-    # автофлаги, уходит в очередь; остальное публикуется сразу.
+    # Модерация: ручную проверку проходят все новые рецепты — рейтинг автора
+    # больше не влияет на публикацию. Модератор и админ публикуют сразу:
+    # они и есть проверяющие.
     moderation_text = "\n".join(filter(None, [
         recipe_data.title,
         recipe_data.description,
         recipe_data.instructions,
     ]))
     auto_flags = auto_flags_for(moderation_text, recipe.photo_url)
-    queued = enqueue_if_needed(
+    is_privileged = (getattr(current_user, 'role', 'user') or 'user') in ('moderator', 'admin')
+    queued = False if is_privileged else enqueue_if_needed(
         db,
         target_type='recipe',
         target_id=recipe.id,
